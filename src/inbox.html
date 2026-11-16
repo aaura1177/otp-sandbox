@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>otp-sandbox inbox</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#16181d; --muted:#667085; --line:#e4e7ec; --bubble:#eef2ff; --ok:#067647; --bad:#b42318; --warn:#b54708; --accent:#4f46e5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1115; --card:#171a21; --text:#e6e8ec; --muted:#98a2b3; --line:#2a2f3a; --bubble:#1f2440; --ok:#47cd89; --bad:#f97066; --warn:#fdb022; --accent:#8b8cf8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; }
+  h1 { font-size:18px; margin:0; }
+  h1 small { color:var(--muted); font-weight:400; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  main { padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(min(100%, 340px), 1fr)); max-width:1200px; margin:0 auto; }
+  .phone { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px; }
+  .phone h2 { font-size:15px; margin:0 0 8px; font-variant-numeric:tabular-nums; }
+  .msg { background:var(--bubble); border-radius:12px; padding:10px 12px; margin-top:8px; overflow-wrap:anywhere; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; color:var(--muted); font-size:12px; margin-top:6px; align-items:center; }
+  .otp { font:600 20px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:2px; }
+  .badge { font-size:12px; font-weight:600; }
+  .delivered { color:var(--ok); } .blocked { color:var(--bad); } .warn { color:var(--warn); font-size:12px; margin-top:4px; }
+  .empty { color:var(--muted); text-align:center; padding:48px 16px; grid-column:1/-1; }
+  code { background:var(--bubble); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📱 otp-sandbox <small>local SMS inbox, nothing is really sent</small></h1>
+  <button id="clear" type="button">Clear all</button>
+</header>
+<main id="inbox"><p class="empty">Waiting for messages… POST to <code>/api/sms</code> with <code>{"to":"9876543210","message":"Your OTP is 123456"}</code></p></main>
+<script>
+  const inbox = document.getElementById('inbox');
+  let lastKey = '';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  function render(messages) {
+    const key = messages.map((m) => m.id).join();
+    if (key === lastKey) return;
+    lastKey = key;
+    inbox.replaceChildren();
+    if (!messages.length) {
+      const p = el('p', 'empty', 'No messages yet. POST to /api/sms to send one.');
+      inbox.append(p);
+      return;
+    }
+    const byPhone = new Map();
+    for (const m of messages) { if (!byPhone.has(m.to)) byPhone.set(m.to, []); byPhone.get(m.to).push(m); }
+    for (const [to, list] of byPhone) {
+      const card = el('section', 'phone');
+      card.append(el('h2', null, to));
+      for (const m of list) {
+        const b = el('div', 'msg');
+        if (m.sender) b.append(el('div', 'badge', m.sender));
+        b.append(el('div', null, m.text));
+        const meta = el('div', 'meta');
+        if (m.otp && m.status === 'delivered') {
+          const otp = el('span', 'otp', m.otp);
+          const copy = el('button', null, 'Copy');
+          copy.type = 'button';
+          copy.onclick = () => navigator.clipboard?.writeText(m.otp).then(() => { copy.textContent = 'Copied'; });
+          meta.append(otp, copy);
+        }
+        meta.append(el('span', `badge ${m.status}`, m.status === 'delivered' ? '✔ delivered' : '✘ blocked by DLT check'));
+        meta.append(el('span', null, `${m.parts} SMS part${m.parts > 1 ? 's' : ''} · ${m.encoding}`));
+        meta.append(el('span', null, new Date(m.createdAt).toLocaleTimeString()));
+        b.append(meta);
+        if (m.reason) b.append(el('div', 'warn', m.reason));
+        for (const w of m.warnings || []) b.append(el('div', 'warn', `⚠ ${w}`));
+        card.append(b);
+      }
+      inbox.append(card);
+    }
+  }
+
+  async function poll() {
+    try { render(await (await fetch('/api/sms')).json()); } catch { /* server restarting */ }
+  }
+  document.getElementById('clear').onclick = async () => { await fetch('/api/sms', { method: 'DELETE' }); poll(); };
+  poll();
+  setInterval(poll, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1107160000000000001",
+    "name": "Login OTP",
+    "sender": "ACMEIN",
+    "text": "{#var#} is your OTP to log in to Acme. It is valid for 10 minutes. Do not share it with anyone. - Acme"
+  },
+  {
+    "id": "1107160000000000002",
+    "name": "Order shipped",
+    "sender": "ACMEIN",
+    "text": "Hi {#var#}, your order {#alphanumeric#} has been shipped and will reach you by {#var#}. - Acme"
+  }
+]

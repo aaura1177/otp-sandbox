@@ -1,0 +1,19 @@
+{
+  "name": "otp-sandbox",
+  "version": "0.1.0",
+  "description": "A fake SMS gateway for local development in India: web inbox for OTPs, an API for automated tests, and a DLT template checker.",
+  "type": "module",
+  "bin": {
+    "otp-sandbox": "bin/otp-sandbox.js"
+  },
+  "files": ["bin", "src", "examples", "README.md", "LICENSE"],
+  "scripts": {
+    "start": "node bin/otp-sandbox.js serve",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["india", "sms", "otp", "dlt", "trai", "testing", "sandbox", "mock", "cli"],
+  "license": "MIT"
+}
